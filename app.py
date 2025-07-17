@@ -64,7 +64,7 @@ demo_files = [f for f in os.listdir(demo_folder) if f.endswith((".xlsx", ".xls")
 
 st.sidebar.subheader("📂 File Selection")
 
-use_demo = st.sidebar.checkbox("Use a demo file from 'excel_files' folder", value=True)
+use_demo = st.sidebar.checkbox("Use a demo files", value=True)
 uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx", "xls"])
 
 if use_demo and demo_files:
