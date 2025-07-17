@@ -22,11 +22,12 @@ def extract_program_name(file_name):
     return os.path.splitext(os.path.basename(file_name))[0].replace("_", " ").upper()
 
 def highlight_category_and_ties(df):
-    tie_mask = df["ObtainMarks"].duplicated(keep=False)
+    # Tie mask within each category
+    tie_mask = df.groupby("CATEGORY")["ObtainMarks"].transform(lambda x: x.duplicated(keep=False))
 
     def style_row(row):
         base_color = CATEGORY_COLORS.get(str(row["CATEGORY"]).strip().upper(), "#FFFFFF")
-        is_tie = tie_mask.loc[row.name]
+        is_tie = tie_mask[row.name]
         bg_color = TIE_COLOR if is_tie else base_color
         return [f"background-color: {bg_color}" for _ in row]
 
@@ -44,16 +45,17 @@ def generate_merit_list(df, seat_matrix):
     return merit_final[selected_cols]
 
 def display_tie_summary(df):
-    tie_df = df[df["ObtainMarks"].duplicated(keep=False)]
+    df["CATEGORY"] = df["CATEGORY"].astype(str)
+    tie_df = df[df.duplicated(subset=["CATEGORY", "ObtainMarks"], keep=False)]
     if not tie_df.empty:
         st.subheader("⚠️ Tie Summary")
-        grouped = tie_df.groupby("ObtainMarks")
-        for marks, group in grouped:
+        grouped = tie_df.groupby(["CATEGORY", "ObtainMarks"])
+        for (cat, marks), group in grouped:
             if len(group) > 1:
-                st.markdown(f"🎯 **Marks:** {marks} — {len(group)} candidates tied")
+                st.markdown(f"🎯 **Category:** `{cat}` | **Marks:** {marks} — {len(group)} candidates tied")
                 st.dataframe(group[["FORM NUMBER", "Applicant Registration No", "NAME OF THE APPLICANT", "CATEGORY", "ObtainMarks"]])
     else:
-        st.info("✅ No ties found in the merit list.")
+        st.info("✅ No ties found within any category in the merit list.")
 
 # ============================ File Handling ============================
 
