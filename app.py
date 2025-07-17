@@ -6,6 +6,7 @@ st.set_page_config(page_title="Merit List Generator", layout="wide")
 st.title("🎓 Merit List Generator")
 st.info("This is demo file. Go to menu to upload a file!!!")
 st.info("Go to Bottom to generate a Merit List by Category")
+
 CATEGORY_COLORS = {
     "GENERAL": "#D1E8E4",
     "OBC-NCL": "#FFF3CD",
@@ -13,6 +14,7 @@ CATEGORY_COLORS = {
     "SCHEDULED TRIBE (ST)": "#D6D8D9",
     "EWS": "#CCE5FF"
 }
+TIE_COLOR = "#FFFF00"  # Bright Yellow
 
 # ============================ Utilities ============================
 
@@ -24,14 +26,9 @@ def highlight_category_and_ties(df):
 
     def style_row(row):
         base_color = CATEGORY_COLORS.get(str(row["CATEGORY"]).strip().upper(), "#FFFFFF")
-        style = []
         is_tie = tie_mask.loc[row.name]
-        for col in df.columns:
-            cell_style = f"background-color: {base_color};"
-            if is_tie:
-                cell_style += "border: 2px solid red;"
-            style.append(cell_style)
-        return style
+        bg_color = TIE_COLOR if is_tie else base_color
+        return [f"background-color: {bg_color}" for _ in row]
 
     return df.style.apply(style_row, axis=1)
 
@@ -45,6 +42,18 @@ def generate_merit_list(df, seat_matrix):
         merit_final = pd.concat([merit_final, top])
     selected_cols = ["Sl. No.", "FORM NUMBER", "Applicant Registration No", "NAME OF THE APPLICANT", "CATEGORY", "ObtainMarks"]
     return merit_final[selected_cols]
+
+def display_tie_summary(df):
+    tie_df = df[df["ObtainMarks"].duplicated(keep=False)]
+    if not tie_df.empty:
+        st.subheader("⚠️ Tie Summary")
+        grouped = tie_df.groupby("ObtainMarks")
+        for marks, group in grouped:
+            if len(group) > 1:
+                st.markdown(f"🎯 **Marks:** {marks} — {len(group)} candidates tied")
+                st.dataframe(group[["FORM NUMBER", "Applicant Registration No", "NAME OF THE APPLICANT", "CATEGORY", "ObtainMarks"]])
+    else:
+        st.info("✅ No ties found in the merit list.")
 
 # ============================ File Handling ============================
 
@@ -112,6 +121,9 @@ if selected_file_path:
             merit_df = generate_merit_list(df_cleaned, seat_matrix)
             styled_df = highlight_category_and_ties(merit_df)
             st.dataframe(styled_df, use_container_width=True)
+
+            # Show ties explicitly
+            display_tie_summary(merit_df)
 
             # CSV Download
             csv = merit_df.to_csv(index=False).encode("utf-8")
