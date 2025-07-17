@@ -5,6 +5,7 @@ import os
 st.set_page_config(page_title="Merit List Generator", layout="wide")
 st.title("🎓 Merit List Generator")
 
+# Category color mapping
 CATEGORY_COLORS = {
     "GENERAL": "#D1E8E4",
     "OBC-NCL": "#FFF3CD",
@@ -13,8 +14,7 @@ CATEGORY_COLORS = {
     "EWS": "#CCE5FF"
 }
 
-# ============================ Utilities ============================
-
+# --- Utils ---
 def extract_program_name(file_name):
     return os.path.splitext(os.path.basename(file_name))[0].replace("_", " ").upper()
 
@@ -36,44 +36,41 @@ def highlight_category_and_ties(df):
 
 def generate_merit_list(df, seat_matrix):
     merit_final = pd.DataFrame()
+
     for category in df["CATEGORY"].dropna().unique():
         cat_df = df[df["CATEGORY"] == category]
         seats = int(seat_matrix.get(category, 0)) * 2
         top = cat_df.sort_values(by="ObtainMarks", ascending=False).head(seats).copy()
         top.insert(0, "Sl. No.", range(1, len(top) + 1))
         merit_final = pd.concat([merit_final, top])
+
     selected_cols = ["Sl. No.", "FORM NUMBER", "Applicant Registration No", "NAME OF THE APPLICANT", "CATEGORY", "ObtainMarks"]
     return merit_final[selected_cols]
 
-# ============================ File Handling ============================
+# --- Demo File ---
+DEFAULT_DEMO_PATH = "excel_files/demo_merit_sample.xlsx"
+demo_df = None
+if os.path.exists(DEFAULT_DEMO_PATH):
+    demo_df = pd.read_excel(DEFAULT_DEMO_PATH)
 
-demo_folder = "excel_files"
-demo_files = [f for f in os.listdir(demo_folder) if f.endswith((".xlsx", ".xls"))]
-
-st.sidebar.subheader("📂 File Selection")
-
-use_demo = st.sidebar.checkbox("Use a demo file from 'excel_files' folder", value=True)
+# --- Sidebar File Uploader ---
+st.sidebar.header("📁 Upload or Use Demo File")
 uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx", "xls"])
+use_demo = st.sidebar.checkbox("Use Demo File", value=not uploaded_file and demo_df is not None)
 
-if use_demo and demo_files:
-    selected_demo = st.sidebar.selectbox("Choose a demo file", demo_files)
-    selected_file_path = os.path.join(demo_folder, selected_demo)
-else:
-    selected_file_path = uploaded_file
+# --- Load File ---
+selected_file = uploaded_file if uploaded_file else (DEFAULT_DEMO_PATH if use_demo else None)
 
-# ============================ Main Processing ============================
-
-if selected_file_path:
+if selected_file:
     try:
-        df_raw = pd.read_excel(selected_file_path) if isinstance(selected_file_path, str) else pd.read_excel(selected_file_path)
-        program_name = extract_program_name(selected_file_path.name if hasattr(selected_file_path, "name") else selected_file_path)
-
+        df_raw = pd.read_excel(selected_file)
+        program_name = extract_program_name(selected_file.name if hasattr(selected_file, "name") else selected_file)
         st.header(f"📘 Program: {program_name}")
 
+        # Clean data
         df = df_raw.copy()
         df["CATEGORY"] = df["CATEGORY"].astype(str).str.strip()
         original_rows = df.shape[0]
-
         df["ObtainMarks"] = pd.to_numeric(df["ObtainMarks"], errors="coerce")
         df_cleaned = df.dropna(subset=["ObtainMarks"])
         cleaned_rows = df_cleaned.shape[0]
@@ -81,7 +78,7 @@ if selected_file_path:
         unique_categories = sorted(df_cleaned["CATEGORY"].dropna().unique())
         category_count = len(unique_categories)
 
-        # Stats summary
+        # 📊 Show statistics
         with st.expander("📊 File Summary and Statistics", expanded=True):
             st.markdown(f"""
             - 🧾 **Original Rows:** {original_rows}  
@@ -93,12 +90,12 @@ if selected_file_path:
             cat_counts = df_cleaned["CATEGORY"].value_counts().rename_axis('CATEGORY').reset_index(name='Count')
             st.dataframe(cat_counts)
 
-        # Seat matrix input
+        # 🪑 Seat matrix input
         st.subheader("🪑 Enter Available Seats per Category")
         seat_matrix = {}
         cols = st.columns(len(unique_categories))
         for i, category in enumerate(unique_categories):
-            seats = cols[i].number_input(f"{category}", min_value=4, step=1, key=category)
+            seats = cols[i].number_input(f"{category}", min_value=1, step=1, key=category)
             seat_matrix[category] = seats
 
         # Preview
@@ -119,4 +116,4 @@ if selected_file_path:
     except Exception as e:
         st.error(f"❌ Failed to process the file. Error: {e}")
 else:
-    st.info("Please upload a file or choose from the demo folder.")
+    st.info("📂 Please upload an Excel file or use the demo file to get started.")
