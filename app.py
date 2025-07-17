@@ -135,3 +135,29 @@ if selected_file_path:
         st.error(f"❌ Failed to process the file. Error: {e}")
 else:
     st.info("Please upload a file or choose from the demo folder.")
+
+# Footer disclaimer fixed at the bottom
+st.markdown(
+    """
+    <style>
+    .footer {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        background-color: #f1f1f1;
+        color: #555555;
+        text-align: center;
+        padding: 8px 0;
+        font-size: 12px;
+        border-top: 1px solid #ddd;
+        z-index: 9999;
+    }
+    </style>
+    <div class="footer">
+        ⚠️ <em>This is just a reference app. Not Offical App. 
+        Developed by ranjit.kolkar@gmail.com</em>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
