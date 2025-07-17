@@ -4,7 +4,7 @@ import os
 
 st.set_page_config(page_title="Merit List Generator", layout="wide")
 st.title("🎓 Merit List Generator")
-
+st.info("This is demo file. Go to menu to upload a file!!!")
 CATEGORY_COLORS = {
     "GENERAL": "#D1E8E4",
     "OBC-NCL": "#FFF3CD",
