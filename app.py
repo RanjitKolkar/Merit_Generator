@@ -5,7 +5,7 @@ import os
 st.set_page_config(page_title="Merit List Generator", layout="wide")
 st.title("🎓 Merit List Generator")
 st.info("This is demo file. Go to menu to upload a file!!!")
-st.info("Go to Bottom to generate a Merit List by Category")
+st.info("Go to Bottom to generate a Merit List by Category and General Merit List")
 
 CATEGORY_COLORS = {
     "GENERAL": "#D1E8E4",
@@ -22,7 +22,6 @@ def extract_program_name(file_name):
     return os.path.splitext(os.path.basename(file_name))[0].replace("_", " ").upper()
 
 def highlight_category_and_ties(df):
-    # Tie mask within each category
     tie_mask = df.groupby("CATEGORY")["ObtainMarks"].transform(lambda x: x.duplicated(keep=False))
 
     def style_row(row):
@@ -33,16 +32,26 @@ def highlight_category_and_ties(df):
 
     return df.style.apply(style_row, axis=1)
 
-def generate_merit_list(df, seat_matrix):
+def generate_category_merit_list(df, seat_matrix):
     merit_final = pd.DataFrame()
     for category in df["CATEGORY"].dropna().unique():
+        if category.upper() == "GENERAL":
+            continue  # Skip GENERAL from category-wise merit list
         cat_df = df[df["CATEGORY"] == category]
-        seats = int(seat_matrix.get(category, 0)) * 2
+        seats = int(seat_matrix.get(category, 0)) * 3
         top = cat_df.sort_values(by="ObtainMarks", ascending=False).head(seats).copy()
         top.insert(0, "Sl. No.", range(1, len(top) + 1))
         merit_final = pd.concat([merit_final, top])
     selected_cols = ["Sl. No.", "FORM NUMBER", "Applicant Registration No", "NAME OF THE APPLICANT", "CATEGORY", "ObtainMarks"]
     return merit_final[selected_cols]
+
+def generate_general_merit_list(df, seat_matrix):
+    general_seats = int(seat_matrix.get("GENERAL", 0)) * 3  # Only GENERAL seats × 2
+    df_sorted = df.sort_values(by="ObtainMarks", ascending=False).copy()
+    df_sorted.insert(0, "Rank", range(1, len(df_sorted) + 1))
+    selected_cols = ["Rank", "FORM NUMBER", "Applicant Registration No", "NAME OF THE APPLICANT", "CATEGORY", "ObtainMarks"]
+    return df_sorted[selected_cols].head(general_seats)
+
 
 def display_tie_summary(df):
     df["CATEGORY"] = df["CATEGORY"].astype(str)
@@ -53,7 +62,7 @@ def display_tie_summary(df):
         for (cat, marks), group in grouped:
             if len(group) > 1:
                 st.markdown(f"🎯 **Category:** `{cat}` | **Marks:** {marks} — {len(group)} candidates tied")
-                st.dataframe(group[["FORM NUMBER", "Applicant Registration No", "NAME OF THE APPLICANT", "CATEGORY", "ObtainMarks"]])
+                st.dataframe(group[["FORM NUMBER", "NAME OF THE APPLICANT", "CATEGORY", "ObtainMarks"]])
     else:
         st.info("✅ No ties found within any category in the merit list.")
 
@@ -117,26 +126,36 @@ if selected_file_path:
         st.subheader("📄 Uploaded Data Preview")
         st.dataframe(df_cleaned.head(10), use_container_width=True)
 
-        # Generate Merit List
+        # Generate Merit Lists
         if st.button("🔍 Generate Merit List"):
-            st.subheader("🏆 Merit List (2× Seats Per Category)")
-            merit_df = generate_merit_list(df_cleaned, seat_matrix)
+            # General Merit List
+            st.subheader("🌐 General Merit List (All Applicants Ranked by Marks)")
+            general_df = generate_general_merit_list(df_cleaned, seat_matrix)
+            st.dataframe(general_df, use_container_width=True)
+
+            # Download general merit list
+            csv_general = general_df.to_csv(index=False).encode("utf-8")
+            st.download_button("⬇️ Download General Merit List CSV", data=csv_general, file_name=f"{program_name}_general_merit_list.csv", mime="text/csv")
+
+            # Category-wise Merit List
+            st.subheader("🏅 Category-Wise Merit List (Excludes 'GENERAL')")
+            merit_df = generate_category_merit_list(df_cleaned, seat_matrix)
             styled_df = highlight_category_and_ties(merit_df)
             st.dataframe(styled_df, use_container_width=True)
 
-            # Show ties explicitly
+            # Tie summary
             display_tie_summary(merit_df)
 
-            # CSV Download
+            # Download category merit list
             csv = merit_df.to_csv(index=False).encode("utf-8")
-            st.download_button("⬇️ Download CSV", data=csv, file_name=f"{program_name}_merit_list.csv", mime="text/csv")
+            st.download_button("⬇️ Download Category-wise Merit List CSV", data=csv, file_name=f"{program_name}_category_merit_list.csv", mime="text/csv")
 
     except Exception as e:
         st.error(f"❌ Failed to process the file. Error: {e}")
 else:
     st.info("Please upload a file or choose from the demo folder.")
 
-# Footer disclaimer fixed at the bottom
+# Footer
 st.markdown(
     """
     <style>
@@ -155,7 +174,7 @@ st.markdown(
     }
     </style>
     <div class="footer">
-        ⚠️ <em>This is just a reference app. Not Offical App. 
+        ⚠️ <em>This is just a reference app. Not Official App. 
         Developed by ranjit.kolkar@gmail.com</em>
     </div>
     """,
