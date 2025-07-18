@@ -59,7 +59,7 @@ def display_tie_summary(df):
     if not tie_df.empty:
         st.subheader("⚠️ Tie Summary")
         grouped = tie_df.groupby(["CATEGORY", "ObtainMarks"])
-        for (cat, marks), group in grouped:
+        for (cat, marks), group in grouped:2
             if len(group) > 1:
                 st.markdown(f"🎯 **Category:** `{cat}` | **Marks:** {marks} — {len(group)} candidates tied")
                 st.dataframe(group[["FORM NUMBER", "NAME OF THE APPLICANT", "CATEGORY", "ObtainMarks"]])
@@ -119,7 +119,7 @@ if selected_file_path:
         seat_matrix = {}
         cols = st.columns(len(unique_categories))
         for i, category in enumerate(unique_categories):
-            seats = cols[i].number_input(f"{category}", min_value=4, step=1, key=category)
+            seats = cols[i].number_input(f"{category}", min_value=1, step=1, key=category)
             seat_matrix[category] = seats
 
         # Preview
