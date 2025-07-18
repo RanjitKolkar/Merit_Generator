@@ -59,10 +59,10 @@ def display_tie_summary(df):
     if not tie_df.empty:
         st.subheader("⚠️ Tie Summary")
         grouped = tie_df.groupby(["CATEGORY", "ObtainMarks"])
-        for (cat, marks), group in grouped:2
+        for (cat, marks), group in grouped:
             if len(group) > 1:
                 st.markdown(f"🎯 **Category:** `{cat}` | **Marks:** {marks} — {len(group)} candidates tied")
-                st.dataframe(group[["FORM NUMBER", "NAME OF THE APPLICANT", "CATEGORY", "ObtainMarks"]])
+                st.dataframe(group[["FORM NUMBER", "Applicant Registration No", "NAME OF THE APPLICANT", "CATEGORY", "ObtainMarks"]])
     else:
         st.info("✅ No ties found within any category in the merit list.")
 
