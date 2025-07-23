@@ -63,20 +63,20 @@ def assign_merit_numbers(df):
     df["Merit No."] = df["ObtainMarks"].rank(method="min", ascending=False).astype(int)
     return df
 
-def generate_general_merit_list(df, seats,multiplier=2):
-    total_call = seats.get("GENERAL", 0) * multiplier
+def generate_general_merit_list(df, seats):
+    total_call = seats.get("GENERAL", 0) * 3
     df_sorted = assign_merit_numbers(df)
     df_sorted["Counselling Status"] = ["Called for Counselling" if i < total_call else "Waitlisted" for i in range(len(df_sorted))]
     return df_sorted
 
-def generate_category_merit_lists(df, seats,multiplier=2):
+def generate_category_merit_lists(df, seats):
     category_dfs = {}
     for cat in df["CATEGORY"].dropna().unique():
         if cat.strip().upper() == "GENERAL":
             continue
         sub_df = df[df["CATEGORY"] == cat].copy()
         sub_df = assign_merit_numbers(sub_df)
-        top_n = seats.get(cat.strip().upper(), 0) * multiplier
+        top_n = seats.get(cat.strip().upper(), 0) * 3
         sub_df["Counselling Status"] = ["Called for Counselling" if i < top_n else "Waitlisted" for i in range(len(sub_df))]
         category_dfs[cat] = sub_df
     return category_dfs
@@ -121,32 +121,15 @@ def normalize_category(cat):
     return replacements.get(cat, cat)
 
 
-# Replace:
-# MERGED_FOLDER = "merged_output"
-# merged_files = [f for f in os.listdir(MERGED_FOLDER) if f.endswith(('.xlsx', '.xls'))]
-# selected_file = st.sidebar.selectbox("📁 Select Merged File", merged_files)
-
-# With this:
-
-MERGED_FOLDER_ROOT = "merged_output"
-
-# Get all campuses (subdirectories)
-campuses = [d for d in os.listdir(MERGED_FOLDER_ROOT) if os.path.isdir(os.path.join(MERGED_FOLDER_ROOT, d))]
-
-selected_campus = st.sidebar.selectbox("🏫 Select Campus", campuses)
-
-# Once campus is selected, list files within that
-campus_folder = os.path.join(MERGED_FOLDER_ROOT, selected_campus)
-campus_files = [f for f in os.listdir(campus_folder) if f.endswith(('.xlsx', '.xls'))]
-
-selected_file = st.sidebar.selectbox("📁 Select Merged File", campus_files)
-file_path = os.path.join(campus_folder, selected_file)
-
+# Load merged files
+MERGED_FOLDER = "merged_files"
+merged_files = [f for f in os.listdir(MERGED_FOLDER) if f.endswith(('.xlsx', '.xls'))]
+selected_file = st.sidebar.selectbox("📁 Select Merged File", merged_files)
 
 seat_matrix_df = load_seat_matrix()
 
 if selected_file:
-    file_path = os.path.join(campus_folder, selected_file)
+    file_path = os.path.join(MERGED_FOLDER, selected_file)
     df_raw = pd.read_excel(file_path)
     
     st.write(f"📄 Total rows before filtering: {len(df_raw)}")
@@ -177,7 +160,7 @@ if selected_file:
     program_options = seat_matrix_df.apply(lambda row: f"{row['Program']} ({row['Campus']})", axis=1).tolist()
 
     # Show dropdown for user to select the correct program
-    selected_program_label = st.selectbox("🎯 Select Matching Program for seat matrix(only updated for Goa campus)", program_options)
+    selected_program_label = st.selectbox("🎯 Select Matching Program for seat matrix", program_options)
 
     # Extract the selected row
     program_row = seat_matrix_df[seat_matrix_df.apply(
@@ -185,9 +168,6 @@ if selected_file:
     )].iloc[0]
 
     seat_inputs = {}
-    st.markdown("### ⚙️ Counselling Multiplier Setting")
-    multiplier = st.number_input("🔢 Seats Multiplier to call for counselling?", min_value=1, max_value=10, value=2, step=1)
-
 
     if program_row is not None:
         st.subheader("🪑 Default Seat Matrix (Editable)")
@@ -209,11 +189,10 @@ if selected_file:
         st.markdown(f"- 🏷️ **Categories Detected (in Present entries):** `{', '.join(sorted(df_cleaned['CATEGORY'].unique()))}`")
         # st.dataframe(df_cleaned[EXPORT_COLUMNS[:-1]].head(10), use_container_width=True)
 
-
 if st.button("🔍 Generate Merit Lists"):
     # 🟢 Generate merit lists first
-    general_df = generate_general_merit_list(df_cleaned, seat_inputs,multiplier=multiplier)
-    category_lists = generate_category_merit_lists(df_cleaned, seat_inputs,multiplier=multiplier)
+    general_df = generate_general_merit_list(df_cleaned, seat_inputs)
+    category_lists = generate_category_merit_lists(df_cleaned, seat_inputs)
     pwd_df = generate_pwd_merit_list(df_cleaned)
 
     # 🟢 Prepare ZIP
